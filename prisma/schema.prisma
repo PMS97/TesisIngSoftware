@@ -1,0 +1,121 @@
+// Prisma Schema for Building Amenity Booking Platform with Supabase (PostgreSQL)
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  RESIDENT
+  GUARD
+  ADMIN
+}
+
+enum ShiftType {
+  LUNCH
+  NIGHT
+}
+
+enum BookingStatus {
+  CONFIRMED
+  PENDING_GUARD
+  CHECKED_IN
+  COMPLETED
+  NO_SHOW
+  REVOKED_ADMIN
+  CANCELLED_RESIDENT
+}
+
+enum InviteStatus {
+  VALID
+  USED
+  EXPIRED
+}
+
+model User {
+  id         String    @id @default(uuid())
+  name       String
+  email      String    @unique
+  role       Role      @default(RESIDENT)
+  apartment  String
+  phone      String?
+  avatarUrl  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  bookings   Booking[]
+}
+
+model Amenity {
+  id             String    @id @default(uuid())
+  name           String
+  description    String
+  maxCapacity    Int
+  location       String
+  requiresPhotos Boolean   @default(true)
+  hasGrill       Boolean   @default(false)
+  image          String
+  rules          String[]
+  createdAt      DateTime  @default(now())
+
+  bookings       Booking[]
+}
+
+model Booking {
+  id                     String        @id @default(uuid())
+  amenityId              String
+  amenity                Amenity       @relation(fields: [amenityId], references: [id])
+  userId                 String
+  user                   User          @relation(fields: [userId], references: [id])
+  userName               String
+  apartment              String
+  userEmail              String
+  date                   String        // YYYY-MM-DD
+  shift                  ShiftType
+  shiftLabel             String
+  startTime              DateTime
+  endTime                DateTime
+  useGrill               Boolean       @default(false)
+  status                 BookingStatus @default(CONFIRMED)
+  isOverWeeklyQuota      Boolean       @default(false)
+  checkedInAt            DateTime?
+  googleCalendarEventId  String?
+  googleDriveFolderUrl   String?
+  photosBefore           String[]
+  photosAfter            String[]
+  adminNote              String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  guestInvites           GuestInvite[]
+}
+
+model GuestInvite {
+  id           String       @id @default(uuid())
+  bookingId    String
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  residentName String
+  apartment    String
+  guestName    String
+  guestDni     String
+  date         String
+  shiftLabel   String
+  qrCodeData   String       @unique
+  status       InviteStatus @default(VALID)
+  usedAt       DateTime?
+  createdAt    DateTime     @default(now())
+}
+
+model GoogleLog {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  service   String   // CALENDAR, DRIVE, GMAIL
+  action    String
+  details   String
+  status    String   // SUCCESS, WARNING, ERROR
+}
